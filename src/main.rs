@@ -5,6 +5,12 @@ fn main() {
 }
 
 slint::slint! {
+    struct TileData {
+        image: image,
+        image_visible: bool,
+        solved: bool,
+    }
+
     component MemoryTile inherits Rectangle {
         callback clicked;
         in property <bool> open_curtain;
@@ -50,10 +56,39 @@ slint::slint! {
     }
 
     export component MainWindow inherits Window {
-        MemoryTile {
-            icon: @image-url("icons/boa_noite_img.png");
+        width: 552px;
+        height: 552px;
+
+        in property <[TileData]> memory_tiles: [
+            { image: @image-url("icons/boa_noite_img.png") },
+            { image: @image-url("icons/boa_noite_text.png") },
+            { image: @image-url("icons/boa_tarde_img.png") },
+            { image: @image-url("icons/boa_tarde_text.png") },
+            { image: @image-url("icons/bom_dia_img.png") },
+            { image: @image-url("icons/bom_dia_text.png") },
+            { image: @image-url("icons/de_nada_img.png") },
+            { image: @image-url("icons/de_nada_text.png") },
+            { image: @image-url("icons/obrigado_img.png") },
+            { image: @image-url("icons/obrigado_text.png") },
+            { image: @image-url("icons/oi_img.png") },
+            { image: @image-url("icons/oi_text.png") },
+            { image: @image-url("icons/ola_img.png") },
+            { image: @image-url("icons/ola_text.png") },
+            { image: @image-url("icons/tudo_bem_img.png") },
+            { image: @image-url("icons/tudo_bem_text.png") },
+        ];
+
+        for tile[i] in memory_tiles : MemoryTile {
+            x: mod(i, 4) * 138px;
+            y: floor(i / 4) * 138px;
+            width: 128px;
+            height: 128px;
+            icon: tile.image;
+            open_curtain: tile.image_visible || tile.solved;
+            // propagate the solved status from the model to the tile
+            solved: tile.solved;
             clicked => {
-                self.open_curtain = !self.open_curtain;
+                tile.image_visible = !tile.image_visible;
             }
         }
     }
