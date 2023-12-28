@@ -1,12 +1,64 @@
 use::slint;
 
 fn main() {
-    MainWindow::new().unwrap().run().unwrap();
+    use slint::Model;
+
+    let main_window = MainWindow::new().unwrap();
+
+    // Fetch the tiles from the model
+    let mut tiles: Vec<TileData> = main_window.get_memory_tiles().iter().collect();
+
+    // Duplicate them to ensure that we have pairs
+    // tiles.extend(tiles.clone());
+
+    // Randomly mix the tiles
+    use rand::seq::SliceRandom;
+    let mut rng = rand::thread_rng();
+    tiles.shuffle(&mut rng);
+
+    // Assign the shuffled Vec to the model property
+    let tiles_model = std::rc::Rc::new(slint::VecModel::from(tiles));
+    main_window.set_memory_tiles(tiles_model.clone().into());
+
+    let main_window_weak = main_window.as_weak();
+    main_window.on_check_if_pair_solved(move || {
+        let mut flipped_tiles =
+            tiles_model.iter().enumerate().filter(|(_, tile)| tile.image_visible && !tile.solved);
+
+        if let (Some((t1_idx, mut t1)), Some((t2_idx, mut t2))) =
+            (flipped_tiles.next(), flipped_tiles.next())
+        {
+            let is_pair_solved = t1.image_name == t2.image_name;
+
+            if is_pair_solved {
+                t1.solved = true;
+                tiles_model.set_row_data(t1_idx, t1);
+                t2.solved = true;
+                tiles_model.set_row_data(t2_idx, t2);
+            } else {
+                let main_window = main_window_weak.unwrap();
+                main_window.set_disable_tiles(true);
+
+                let tiles_model = tiles_model.clone();
+
+                slint::Timer::single_shot(std::time::Duration::from_secs(1), move || {
+                    main_window.set_disable_tiles(false);
+                    t1.image_visible = false;
+                    tiles_model.set_row_data(t1_idx, t1);
+                    t2.image_visible = false;
+                    tiles_model.set_row_data(t2_idx, t2);
+                });
+            }
+        }
+    });
+
+    main_window.run().unwrap();
 }
 
 slint::slint! {
     struct TileData {
         image: image,
+        image_name: string,
         image_visible: bool,
         solved: bool,
     }
@@ -59,23 +111,74 @@ slint::slint! {
         width: 552px;
         height: 552px;
 
+        callback check_if_pair_solved(); // Added
+        in property <bool> disable_tiles; // Added
+
         in property <[TileData]> memory_tiles: [
-            { image: @image-url("icons/boa_noite_img.png") },
-            { image: @image-url("icons/boa_noite_text.png") },
-            { image: @image-url("icons/boa_tarde_img.png") },
-            { image: @image-url("icons/boa_tarde_text.png") },
-            { image: @image-url("icons/bom_dia_img.png") },
-            { image: @image-url("icons/bom_dia_text.png") },
-            { image: @image-url("icons/de_nada_img.png") },
-            { image: @image-url("icons/de_nada_text.png") },
-            { image: @image-url("icons/obrigado_img.png") },
-            { image: @image-url("icons/obrigado_text.png") },
-            { image: @image-url("icons/oi_img.png") },
-            { image: @image-url("icons/oi_text.png") },
-            { image: @image-url("icons/ola_img.png") },
-            { image: @image-url("icons/ola_text.png") },
-            { image: @image-url("icons/tudo_bem_img.png") },
-            { image: @image-url("icons/tudo_bem_text.png") },
+            {
+                image: @image-url("icons/boa_noite_img.png"),
+                image_name: "boa_noite",
+            },
+            {
+                image: @image-url("icons/boa_noite_text.png"),
+                image_name: "boa_noite",
+            },
+            {
+                image: @image-url("icons/boa_tarde_img.png"),
+                image_name: "boa_tarde",
+            },
+            {
+                image: @image-url("icons/boa_tarde_text.png"),
+                image_name: "boa_tarde",
+            },
+            {
+                image: @image-url("icons/bom_dia_img.png"),
+                image_name: "bom_dia",
+            },
+            {
+                image: @image-url("icons/bom_dia_text.png"),
+                image_name: "bom_dia",
+            },
+            {
+                image: @image-url("icons/de_nada_img.png"),
+                image_name: "de_nada",
+            },
+            {
+                image: @image-url("icons/de_nada_text.png"),
+                image_name: "de_nada",
+            },
+            {
+                image: @image-url("icons/obrigado_img.png"),
+                image_name: "obrigado",
+            },
+            {
+                image: @image-url("icons/obrigado_text.png"),
+                image_name: "obrigado",
+            },
+            {
+                image: @image-url("icons/oi_img.png"),
+                image_name: "oi",
+            },
+            {
+                image: @image-url("icons/oi_text.png"),
+                image_name: "oi",
+            },
+            {
+                image: @image-url("icons/ola_img.png"),
+                image_name: "ola",
+            },
+            {
+                image: @image-url("icons/ola_text.png"),
+                image_name: "ola",
+            },
+            {
+                image: @image-url("icons/tudo_bem_img.png"),
+                image_name: "tudo_bem",
+            },
+            {
+                image: @image-url("icons/tudo_bem_text.png"),
+                image_name: "tudo_bem",
+            },
         ];
 
         for tile[i] in memory_tiles : MemoryTile {
@@ -88,7 +191,10 @@ slint::slint! {
             // propagate the solved status from the model to the tile
             solved: tile.solved;
             clicked => {
-                tile.image_visible = !tile.image_visible;
+                if (!root.disable_tiles) {
+                    tile.image_visible = !tile.image_visible;
+                    root.check_if_pair_solved();
+                }
             }
         }
     }
