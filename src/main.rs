@@ -1,5 +1,3 @@
-use::slint;
-
 fn main() {
     use slint::Model;
 
@@ -21,6 +19,7 @@ fn main() {
     main_window.set_memory_tiles(tiles_model.clone().into());
 
     let main_window_weak = main_window.as_weak();
+
     main_window.on_check_if_pair_solved(move || {
         let mut flipped_tiles =
             tiles_model.iter().enumerate().filter(|(_, tile)| tile.image_visible && !tile.solved);
@@ -65,19 +64,31 @@ slint::slint! {
 
     component MemoryTile inherits Rectangle {
         callback clicked;
+
         in property <bool> open_curtain;
         in property <bool> solved;
         in property <image> icon;
 
         height: 128px;
         width: 128px;
-        background: solved ? #34CE57 : #3960D5;
+        border-width: 2px;
+        border-color: black;
+        border-radius: 12px;
+        clip: true;
         animate background { duration: 800ms; }
 
         Image {
             source: icon;
             width: parent.width;
             height: parent.height;
+
+            // Solved layer
+            Rectangle {
+                opacity: 0.3;
+                background: solved ? #34CE57 : transparent;
+                width: solved ? parent.width : 0;
+                height: solved ? parent.height : 0;
+            }
         }
 
         // Left curtain
@@ -108,8 +119,9 @@ slint::slint! {
     }
 
     export component MainWindow inherits Window {
-        width: 552px;
-        height: 552px;
+        width: 562px;
+        height: 562px;
+        background: #2D2D2D;
 
         callback check_if_pair_solved(); // Added
         in property <bool> disable_tiles; // Added
@@ -182,8 +194,8 @@ slint::slint! {
         ];
 
         for tile[i] in memory_tiles : MemoryTile {
-            x: mod(i, 4) * 138px;
-            y: floor(i / 4) * 138px;
+            x: mod(i, 4) * 138px + 10px;
+            y: floor(i / 4) * 138px + 10px;
             width: 128px;
             height: 128px;
             icon: tile.image;
